@@ -24,7 +24,7 @@ function loadFace() {
 				selfieMode: true,
 				enableFaceGeometry: false,
 				maxNumFaces: 1,
-				refineLandmarks: false,
+				refineLandmarks: true,
 				minDetectionConfidence: 0.5,
 				minTrackingConfidence: 0.5,
 			};
@@ -36,7 +36,7 @@ function loadFace() {
 				canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 				if (results.multiFaceLandmarks) {
 					for (const landmarks of results.multiFaceLandmarks) {
-						drawConnectors(canvasCtx, landmarks, mpFaceMesh.FACEMESH_CONTOURS, {
+						drawConnectors(canvasCtx, landmarks, mpFaceMesh.FACEMESH_TESSELATION, {
 							color: "#00FF00",
 							lineWidth: 1,
 						});
@@ -65,8 +65,8 @@ function loadFace() {
 				onFrame: async () => {
 					await faceMesh.send({ image: videoElement });
 				},
-				width: 1280,
-				height: 720,
+				width: window.innerWidth,
+				height: window.innerHeight,
 			});
 			camera.start();
 
