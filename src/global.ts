@@ -1,6 +1,6 @@
 //@ts-ignore
-const width = window.width || window.innerWidth
+const width = () => window.innerWidth
 //@ts-ignore
-const height = window.height || window.innerHeight
+const height = () => window.innerHeight
 
 export { width, height }
