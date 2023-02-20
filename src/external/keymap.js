@@ -15,6 +15,10 @@ Keymap.prototype.bind = function (key, func) {
 Keymap.prototype.unbind = function (key) {
 	delete this.map[Keymap.normalize(key)]
 }
+// Delete all bindings
+Keymap.prototype.unbindAll = function () {
+	this.map = {}
+}
 
 // Install this Keymap on the specified HTML element
 Keymap.prototype.install = function (element) {
@@ -53,7 +57,6 @@ Keymap.prototype.dispatch = function (event, element) {
 
 	// The canonical key id is modifiers plus lowercase key name
 	var keyid = modifiers + keyname.toLowerCase()
-	console.log({ keyname, keyid })
 
 	// Now see if the key identifier is bound to anything
 	var handler = this.map[keyid]
