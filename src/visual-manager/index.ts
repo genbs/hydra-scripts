@@ -155,24 +155,6 @@ class VisualManager {
 		}
 	}
 
-	itv(callback: CallableFunction, interval: number = 1): CallableFunction {
-		let itv
-
-		const _itv = () => {
-			callback()
-			const visualDuration = this.lastRun?.duration || interval
-			itv = setTimeout(() => {
-				_itv()
-			}, visualDuration * 1000)
-		}
-		_itv()
-
-		return () => {
-			console.log('clearing interval', itv)
-			clearTimeout(itv)
-		}
-	}
-
 	sequence(
 		id: string | number,
 		visuals: (string | number)[],
@@ -194,16 +176,23 @@ class VisualManager {
 		const seq = this.sequences[id]
 
 		let i = 0
-		seq.itv = this.itv(() => {
+		let itv
+		const _itv = () => {
 			const v = seq.visuals[i]
 			if (seq.blend) {
-				this.blend(v.name, seq.duration || v.duration, seq.out, true)
+				this.blend(v.name, seq.blend, seq.out, true)
 			} else {
 				this.run(v.name, seq.out, true)
 			}
-
 			i = (i + 1) % seq.visuals.length
-		}, seq.duration)
+			itv = setTimeout(_itv, (seq.duration || v.duration) * 1000)
+		}
+
+		seq.itv = () => {
+			clearTimeout(itv)
+		}
+
+		_itv()
 	}
 }
 
