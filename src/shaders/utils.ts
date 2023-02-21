@@ -47,14 +47,19 @@ export function shader() {
 	let program, rid
 	const { gl, bufferInfo, canvas } = createGl()
 
-	return {
+	const self = {
 		bufferInfo,
 		gl,
 		canvas,
 		update: (vertex, fragment) => {
+			self.vert = vertex
+			self.frag = fragment
+
 			program = twgl.createProgramInfo(gl, [vertex, fragment], undefined, e => {
 				console.error('Shader error', e)
 			})
+
+			console.log(program)
 		},
 		reload: () => {
 			rid && rid()
@@ -63,7 +68,11 @@ export function shader() {
 				rid = render(gl, program, bufferInfo)
 			}
 		},
+		vert: VERTEX_SHADER,
+		frag: FRAGMENT_SHADER,
 	}
+
+	return self
 }
 
 export function render(gl, programInfo, bufferInfo) {
@@ -76,12 +85,11 @@ export function render(gl, programInfo, bufferInfo) {
 		rid = requestAnimationFrame(_render)
 
 		//twgl.resizeCanvasToDisplaySize(gl.canvas)
-		//gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
-		gl.viewport(0, 0, width, height)
+		gl.viewport(0, 0, width(), height())
 
 		const uniforms = {
 			time: time * 0.001,
-			resolution: [width, height],
+			resolution: [width(), height],
 			mouse: [mousex, mousey, mousez],
 		}
 

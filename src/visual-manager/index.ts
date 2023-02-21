@@ -18,11 +18,20 @@ interface VisualOption {
 	duration?: number // seconds
 }
 
+interface Sequence {
+	name?: string
+	visuals: Visual[]
+	blend?: number
+	out?: HydraOut
+	duration?: number // seconds
+	itv: CallableFunction
+}
+
 class VisualManager {
 	keymap: Keymap
 	visuals: { [key: string]: Visual } = {}
+	sequences: { [key: string]: Sequence } = {}
 	lastRun: Visual | null = null
-	_itv: NodeJS.Timeout
 
 	constructor() {
 		this.keymap = new Keymap()
@@ -39,7 +48,7 @@ class VisualManager {
 
 	add(synth: HydraScript, optionsOrDuration: VisualOption | number = {}, runImmediately = false) {
 		const options = typeof optionsOrDuration === 'number' ? { duration: optionsOrDuration } : optionsOrDuration
-		const name = options.name || this.findNameBySrc(synth) || `v${Object.keys(this.visuals).length}`
+		const name = options.name || this.findNameBySrc(synth) || `${Object.keys(this.visuals).length}`
 
 		if (options.keymap) {
 			this.keymap.bind(options.keymap, () => this.run(name))
@@ -72,49 +81,49 @@ class VisualManager {
 	}
 
 	hush() {
-		clearTimeout(this._itv)
 		this.lastRun = null
 
 		this.visuals = {}
 		this.keymap.unbindAll()
 	}
 
-	run(nameOrScriptOrIndex: string | HydraScript | number) {
-		clearTimeout(this._itv)
-
-		let visual: Visual | null = null
-		if (typeof nameOrScriptOrIndex === 'number') {
-			visual = this.get(nameOrScriptOrIndex)
-		} else if (typeof nameOrScriptOrIndex === 'string') {
-			visual = this.visuals[nameOrScriptOrIndex]
-		} else {
+	resolve(visual: string | HydraScript | number | Visual): Visual {
+		if (typeof visual === 'number') {
+			visual = this.get(visual)
+		} else if (typeof visual === 'string') {
+			visual = this.visuals[visual]
+		} else if (typeof visual === 'function') {
 			visual = {
-				src: nameOrScriptOrIndex,
+				src: visual,
 				out: 'o0',
 				name: '[inline]',
 			}
 		}
+
+		return visual
+	}
+
+	clearAll() {
+		Object.keys(this.sequence).forEach(sequence => {
+			this.sequence[sequence].itv()
+		})
+	}
+
+	run(nameOrScriptOrIndex: string | HydraScript | number, out?: HydraOut, disableClear?: boolean) {
+		if (disableClear === true) this.clearAll()
+
+		let visual = this.resolve(nameOrScriptOrIndex)
 		if (visual) {
 			//console.log(`[VisualManager]: Running visual: ${name} (${out})`)
-			visual.src()?.out(window[visual.out])
+			visual.src()?.out(out || window[visual.out])
 			this.lastRun = visual
 		}
 	}
 
-	blend(nameOrScriptOrIndex: string | HydraScript | number, duration?: number) {
-		let visual: Visual | null = null
-		if (typeof nameOrScriptOrIndex === 'number') {
-			visual = this.get(nameOrScriptOrIndex)
-		} else if (typeof nameOrScriptOrIndex === 'string') {
-			visual = this.visuals[nameOrScriptOrIndex]
-		} else {
-			visual = {
-				src: nameOrScriptOrIndex,
-				out: 'o0',
-				name: '[inline]',
-			}
-		}
+	blend(nameOrScriptOrIndex: string | HydraScript | number, duration?: number, out?: HydraOut, disableClear?: boolean) {
+		if (disableClear === true) this.clearAll()
 
+		let visual = this.resolve(nameOrScriptOrIndex)
 		duration = duration || visual?.duration / 2 || 1
 
 		if (this.lastRun && duration > 0) {
@@ -133,7 +142,7 @@ class VisualManager {
 
 					if (b >= 1) {
 						setTimeout(() => {
-							visual.src()?.out(window[visual.out])
+							visual.src()?.out(out || window[visual.out])
 							this.lastRun = visual
 						})
 						return 1
@@ -141,25 +150,29 @@ class VisualManager {
 
 					return b
 				})
-				.out(window[visual.out])
+				.out(out || window[visual.out])
 		} else {
-			visual.src()?.out(window[visual.out])
+			visual.src()?.out(out || window[visual.out])
 			this.lastRun = visual
 		}
 	}
 
-	itv(callback: CallableFunction, interval: number = 1, out: HydraOut = 'o0') {
-		clearTimeout(this._itv)
-		callback()
-		const visualDuration = this.lastRun?.duration || interval
+	itv(callback: CallableFunction, interval: number = 1): CallableFunction {
+		let itv
 
-		this._itv = setTimeout(() => {
-			this.itv(callback, visualDuration, out)
-		}, visualDuration * 1000)
-	}
+		const _itv = () => {
+			callback()
+			const visualDuration = this.lastRun?.duration || interval
+			itv = setTimeout(() => {
+				_itv()
+			}, visualDuration * 1000)
+		}
+		_itv()
 
-	stop() {
-		clearTimeout(this._itv)
+		return () => {
+			console.log('clearing interval', itv)
+			clearTimeout(itv)
+		}
 	}
 
 	sequence(
@@ -167,22 +180,32 @@ class VisualManager {
 		visuals: (string | number)[],
 		options: { duration?: number; blend?: number; out?: HydraOut }
 	) {
+		if (this.sequences[id]) {
+			this.sequences[id].itv()
+		}
+
+		this.sequences[id] = {
+			name: `seq_${id}`,
+			visuals: visuals.map((v, i) => this.get(v)),
+			out: options?.out,
+			blend: options?.blend,
+			duration: options?.duration,
+			itv: null,
+		} as Sequence
+
+		const seq = this.sequences[id]
+
 		let i = 0
-		const duration = options.duration || 1
-		const blend = options.blend || 0
-		const out = options.out || 'o0'
-		this.itv(
-			() => {
-				if (blend > 0) {
-					this.blend(visuals[i], blend)
-				} else {
-					this.run(visuals[i])
-				}
-				i = (i + 1) % visuals.length
-			},
-			duration,
-			out
-		)
+		seq.itv = this.itv(() => {
+			const v = seq.visuals[i]
+			if (seq.blend) {
+				this.blend(v.name, seq.duration || v.duration, seq.out, true)
+			} else {
+				this.run(v.name, seq.out, true)
+			}
+
+			i = (i + 1) % seq.visuals.length
+		}, seq.duration)
 	}
 }
 
