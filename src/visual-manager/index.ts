@@ -133,11 +133,9 @@ class VisualManager {
 				.src()
 				.blend(visual.src(), () => {
 					if (!startTime) {
-						// @ts-ignore
-						startTime = time
+						startTime = window.time
 					}
-					// @ts-ignore
-					const e = time - startTime
+					const e = window.time - startTime
 					const b = e > duration ? 1 : e > 0 ? e / duration : 0.001
 
 					if (b >= 1) {
