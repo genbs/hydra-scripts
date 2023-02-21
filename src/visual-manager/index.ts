@@ -157,7 +157,9 @@ class VisualManager {
 		options: { duration?: number; blend?: number; out?: HydraOut }
 	) {
 		if (this.sequences[id]) {
-			this.sequences[id].refresh(visuals, options)
+			if (visuals) {
+				this.sequences[id].refresh(visuals, options)
+			}
 			return this.sequences[id]
 		}
 
