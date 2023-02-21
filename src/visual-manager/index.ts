@@ -124,7 +124,7 @@ class VisualManager {
 		if (disableClear === true) this.clearAll()
 
 		let visual = this.resolve(nameOrScriptOrIndex)
-		duration = duration || visual?.duration / 2 || 1
+		duration = duration || visual.duration / 2 || 0.3
 
 		if (this.lastRun && duration > 0) {
 			let startTime
@@ -136,13 +136,13 @@ class VisualManager {
 						startTime = window.time
 					}
 					const e = window.time - startTime
-					const b = e > duration ? 1 : e > 0 ? e / duration : 0.001
+					const b = e >= duration ? 1 : e > 0 ? e / duration : 0.001
 
 					if (b >= 1) {
-						setTimeout(() => {
-							visual.src()?.out(out || window[visual.out])
-							this.lastRun = visual
-						})
+						//setTimeout(() => {
+						//visual.src()?.out(out || window[visual.out])
+						this.lastRun = visual
+						//})
 						return 1
 					}
 
