@@ -1,4 +1,3 @@
-import { height, width } from '../global'
 import * as twgl from 'twgl.js'
 
 export const VERTEX_SHADER = `
@@ -22,7 +21,7 @@ export const FRAGMENT_SHADER = `
 `
 
 export function createGl() {
-	const canvas = new OffscreenCanvas(width(), height())
+	const canvas = new OffscreenCanvas(window.width, window.height)
 	const gl = canvas.getContext('webgl2', {
 		alpha: false,
 		antialias: false,
@@ -85,11 +84,11 @@ export function render(gl, programInfo, bufferInfo) {
 		rid = requestAnimationFrame(_render)
 
 		//twgl.resizeCanvasToDisplaySize(gl.canvas)
-		gl.viewport(0, 0, width(), height())
+		gl.viewport(0, 0, window.width, window.height)
 
 		const uniforms = {
 			time: time * 0.001,
-			resolution: [width(), height],
+			resolution: [window.width, window.height],
 			mouse: [mousex, mousey, mousez],
 		}
 
@@ -109,8 +108,8 @@ let mousex = 0,
 	mousez = 0
 
 document.body.addEventListener('mousemove', e => {
-	mousex = e.clientX / width()
-	mousey = e.clientY / height()
+	mousex = e.clientX / window.width
+	mousey = e.clientY / window.height
 })
 document.body.addEventListener('mousedown', e => {
 	mousez = 1
