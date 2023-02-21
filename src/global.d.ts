@@ -3,6 +3,8 @@ declare global {
 		width: number
 		height: number
 		time: number
+
+		o0: any
 	}
 }
 

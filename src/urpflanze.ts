@@ -10,7 +10,7 @@ function createInstance(id: string, callback: (scene: Urpflanze.Scene) => Offscr
 	}
 
 	options = { ...defaultOptions, ...options }
-	console.log(options)
+
 	if (!instances.has(id)) {
 		const canvas = new OffscreenCanvas(window.width, window.height)
 		const scene = new Urpflanze.Scene({

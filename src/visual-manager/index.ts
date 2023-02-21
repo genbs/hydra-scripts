@@ -18,15 +18,6 @@ interface VisualOption {
 	duration?: number // seconds
 }
 
-interface Sequence {
-	name?: string
-	visuals: Visual[]
-	blend?: number
-	out?: HydraOut
-	duration?: number // seconds
-	itv: CallableFunction
-}
-
 class VisualManager {
 	keymap: Keymap
 	visuals: { [key: string]: Visual } = {}
@@ -115,9 +106,13 @@ class VisualManager {
 		let visual = this.resolve(nameOrScriptOrIndex)
 		if (visual) {
 			//console.log(`[VisualManager]: Running visual: ${name} (${out})`)
-			visual.src()?.out(out || window[visual.out])
+			VisualManager.run(visual, out || window[visual.out])
 			this.lastRun = visual
 		}
+	}
+
+	static run(visual: Visual, out: HydraOut) {
+		visual.src()?.out(out)
 	}
 
 	blend(nameOrScriptOrIndex: string | HydraScript | number, duration?: number, out?: HydraOut, disableClear?: boolean) {
@@ -127,32 +122,33 @@ class VisualManager {
 		duration = duration || visual.duration / 2 || 0.3
 
 		if (this.lastRun && duration > 0) {
-			let startTime
-
-			this.lastRun
-				.src()
-				.blend(visual.src(), () => {
-					if (!startTime) {
-						startTime = window.time
-					}
-					const e = window.time - startTime
-					const b = e >= duration ? 1 : e > 0 ? e / duration : 0.001
-
-					if (b >= 1) {
-						//setTimeout(() => {
-						//visual.src()?.out(out || window[visual.out])
-						this.lastRun = visual
-						//})
-						return 1
-					}
-
-					return b
-				})
-				.out(out || window[visual.out])
-		} else {
-			visual.src()?.out(out || window[visual.out])
-			this.lastRun = visual
+			VisualManager.blend(this.lastRun, visual, duration, out || window[visual.out], () => {
+				this.lastRun = visual
+			})
 		}
+	}
+
+	static blend(vSrc: Visual, vDest: Visual, duration: number, out: HydraOut, onEnd?: CallableFunction) {
+		let startTime
+
+		vSrc
+			.src()
+			.blend(vDest.src(), () => {
+				if (!startTime) {
+					startTime = window.time
+				}
+				const e = window.time - startTime
+				const b = e >= duration ? 1 : e > 0 ? e / duration : 0.001
+
+				if (b >= 1) {
+					vDest.src()?.out(out)
+					onEnd && onEnd()
+					return 1
+				}
+
+				return b
+			})
+			.out(out)
 	}
 
 	sequence(
@@ -161,38 +157,86 @@ class VisualManager {
 		options: { duration?: number; blend?: number; out?: HydraOut }
 	) {
 		if (this.sequences[id]) {
-			this.sequences[id].itv()
+			this.sequences[id].refresh(visuals, options)
+			return this.sequences[id]
 		}
 
-		this.sequences[id] = {
-			name: `seq_${id}`,
-			visuals: visuals.map((v, i) => this.get(v)),
-			out: options?.out,
-			blend: options?.blend,
-			duration: options?.duration,
-			itv: null,
-		} as Sequence
+		this.sequences[id] = new Sequence(id, visuals, options, this)
+	}
+}
 
-		const seq = this.sequences[id]
+class Sequence {
+	name: string
+	visuals: (string | number)[]
+	out?: HydraOut
+	blend?: number
+	duration?: number
+	itv: number
+	current: number
+	vm: VisualManager
 
-		let i = 0
-		let itv
-		const _itv = () => {
-			const v = seq.visuals[i]
-			if (seq.blend) {
-				this.blend(v.name, seq.blend, seq.out, true)
-			} else {
-				this.run(v.name, seq.out, true)
-			}
-			i = (i + 1) % seq.visuals.length
-			itv = setTimeout(_itv, (seq.duration || v.duration) * 1000)
+	constructor(
+		name: string | number,
+		visuals: (string | number)[],
+		options: { duration?: number; blend?: number; out?: HydraOut },
+		vm: VisualManager
+	) {
+		this.name = name + ''
+		this.visuals = visuals
+		this.out = options?.out
+		this.blend = options?.blend
+		this.duration = options?.duration
+		this.itv = 0
+		this.current = -1
+		this.vm = vm
+	}
+
+	refresh(visuals: (string | number)[], options: { duration?: number; blend?: number; out?: HydraOut }) {
+		this.visuals = visuals
+		this.out = options?.out
+		this.blend = options?.blend
+		this.duration = options?.duration
+
+		if (this.itv) {
+			this.stop()
+			this.start()
+		}
+	}
+
+	start() {
+		if (this.itv > 0) {
+			return
 		}
 
-		seq.itv = () => {
-			clearTimeout(itv)
+		const loop = () => {
+			const duration = this.next()
+
+			this.itv = window.setTimeout(loop, duration * 1000)
 		}
 
-		_itv()
+		loop()
+	}
+
+	stop() {
+		window.clearTimeout(this.itv)
+		this.itv = 0
+	}
+
+	next() {
+		const current = this.vm.get(this.visuals[this.current])
+		const nextIndex = (this.current + 1) % this.visuals.length
+		const next = this.vm.get(this.visuals[nextIndex])
+		const duration = this.duration || next.duration
+
+		if (current && this.blend) {
+			VisualManager.blend(current, next, this.blend > duration ? duration - 0.03 : this.blend, this.out || window.o0)
+		} else {
+			VisualManager.run(next, this.out || window.o0)
+		}
+
+		this.current = (this.current + 1) % this.visuals.length
+
+		return duration
 	}
 }
 
