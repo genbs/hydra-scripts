@@ -228,7 +228,7 @@ class Sequence {
 		const current = this.vm.get(this.visuals[this.current])
 		const nextIndex = (this.current + 1) % this.visuals.length
 		const next = this.vm.get(this.visuals[nextIndex])
-		const duration = this.duration || next.duration
+		const duration = this.duration || next.duration || 0.5
 
 		if (current && this.blend) {
 			VisualManager.blend(current, next, this.blend > duration ? duration - 0.03 : this.blend, this.out || window.o0)
