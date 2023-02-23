@@ -5,6 +5,8 @@ declare global {
 		time: number
 
 		o0: any
+
+		setFunction: any
 	}
 }
 
