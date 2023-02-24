@@ -29,17 +29,17 @@ class VisualManager {
 		this.keymap.install(document.body)
 	}
 
-	addr(synth: HydraScript, optionsOrDuration: VisualOption | number = {}) {
-		return this.add(synth, optionsOrDuration, true)
-	}
-
 	findNameBySrc(src: HydraScript): string | undefined {
 		return Object.keys(this.visuals).find(name => this.visuals[name].src.toString() === src.toString())
 	}
 
-	add(synth: HydraScript, optionsOrDuration: VisualOption | number = {}, runImmediately = false) {
+	a(name: string, synth: HydraScript, optionsOrDuration: VisualOption | number = {}, runImmediately = false) {
+		return this.add(name, synth, optionsOrDuration, runImmediately)
+	}
+
+	add(name: string, synth: HydraScript, optionsOrDuration: VisualOption | number = {}, runImmediately = false) {
 		const options = typeof optionsOrDuration === 'number' ? { duration: optionsOrDuration } : optionsOrDuration
-		const name = options.name || this.findNameBySrc(synth) || `${Object.keys(this.visuals).length}`
+		name = name || this.findNameBySrc(synth) || `${Object.keys(this.visuals).length}`
 
 		if (options.keymap) {
 			this.keymap.bind(options.keymap, () => this.run(name))
@@ -53,7 +53,14 @@ class VisualManager {
 			keymap: options.keymap,
 		}
 
-		if (runImmediately) this.run(name)
+		if (
+			runImmediately ||
+			(this.lastRun?.name === name &&
+				// dont' run if there is a sequence running
+				Object.values(this.sequences).find(s => s.running && s.visuals[s.current] === name) === null)
+		) {
+			this.run(name)
+		}
 	}
 
 	get(visual: string | number): Visual {
@@ -61,6 +68,10 @@ class VisualManager {
 
 		visual = visual % Object.keys(this.visuals).length
 		return this.visuals[Object.keys(this.visuals)[visual]]
+	}
+
+	v(visual: string | number): HydraScript | undefined {
+		return this.get(visual).src()
 	}
 
 	src(visual: string | number): HydraScript {
@@ -106,6 +117,10 @@ class VisualManager {
 		let visual = this.resolve(nameOrScriptOrIndex)
 		if (visual) {
 			//console.log(`[VisualManager]: Running visual: ${name} (${out})`)
+			Object.keys(this.sequences).forEach(sequence => {
+				this.sequences[sequence].stop()
+			})
+
 			VisualManager.run(visual, out || window[visual.out])
 			this.lastRun = visual
 		}
@@ -156,14 +171,22 @@ class VisualManager {
 		visuals: (string | number)[],
 		options: { duration?: number; blend?: number; out?: HydraOut }
 	) {
-		if (this.sequences[id]) {
+		const keys = Object.keys(this.sequences)
+		const key = typeof id === 'string' ? id : keys[id] || `${keys.length}`
+
+		if (this.sequences[key]) {
 			if (visuals) {
-				this.sequences[id].refresh(visuals, options)
+				this.sequences[key].refresh(visuals, options)
 			}
-			return this.sequences[id]
+		} else {
+			this.sequences[key] = new Sequence(key, visuals, options, this)
 		}
 
-		this.sequences[id] = new Sequence(id, visuals, options, this)
+		return this.sequences[key]
+	}
+
+	s(id: string | number, visuals: (string | number)[], options: { duration?: number; blend?: number; out?: HydraOut }) {
+		return this.sequence(id, visuals, options)
 	}
 }
 
@@ -173,6 +196,7 @@ class Sequence {
 	out?: HydraOut
 	blend?: number
 	duration?: number
+	running: boolean
 	itv: number
 	current: number
 	vm: VisualManager
@@ -191,6 +215,7 @@ class Sequence {
 		this.itv = 0
 		this.current = -1
 		this.vm = vm
+		this.running = false
 	}
 
 	refresh(visuals: (string | number)[], options: { duration?: number; blend?: number; out?: HydraOut }) {
@@ -222,6 +247,7 @@ class Sequence {
 	stop() {
 		window.clearTimeout(this.itv)
 		this.itv = 0
+		this.running = false
 	}
 
 	next() {
@@ -237,6 +263,8 @@ class Sequence {
 		}
 
 		this.current = (this.current + 1) % this.visuals.length
+
+		this.running = true
 
 		return duration
 	}
