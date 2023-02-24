@@ -86,7 +86,7 @@ eval("\nexports.__esModule = true;\n__webpack_require__(/*! ./hydra-abbreviation
   \**************************/
 /***/ (() => {
 
-eval("window.setFunction({\n    name: 'kale',\n    type: 'coord',\n    inputs: [\n        {\n            type: 'float',\n            name: 'nSides',\n            \"default\": 4\n        },\n        {\n            type: 'float',\n            name: 'k',\n            \"default\": 0.0\n        },\n    ],\n    glsl: \"   vec2 st = _st;\\n     st -= 0.5;\\n     float r = length(st) - k;\\n     float a = atan(st.y, st.x);\\n     float pi = 2.*3.1416;\\n     a = mod(a,pi/nSides);\\n     a = abs(a-pi/nSides/2.);\\n     return r*vec2(cos(a), sin(a));\"\n});\n\n\n//# sourceURL=webpack://hydra-scripts/./src/functions.ts?");
+eval("window.setFunction({\n    name: 'kale',\n    type: 'coord',\n    inputs: [\n        {\n            type: 'float',\n            name: 'nSides',\n            \"default\": 4\n        },\n        {\n            type: 'float',\n            name: 'k',\n            \"default\": 0.0\n        },\n    ],\n    glsl: \"   vec2 st = _st;\\n     st -= 0.5;\\n     float r = length(st) - k;\\n     float a = atan(st.y, st.x);\\n     float pi = 2.*3.1416;\\n     a = mod(a,pi/nSides);\\n     a = abs(a-pi/nSides/2.);\\n     return r*vec2(cos(a), sin(a));\"\n});\n// @ts-ignore\nwindow.ratio = function () { return 1 / (window.width / window.height); };\n\n\n//# sourceURL=webpack://hydra-scripts/./src/functions.ts?");
 
 /***/ }),
 

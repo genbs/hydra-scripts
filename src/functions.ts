@@ -22,3 +22,6 @@ window.setFunction({
      a = abs(a-pi/nSides/2.);
      return r*vec2(cos(a), sin(a));`,
 })
+
+// @ts-ignore
+window.ratio = () => 1 / (window.width / window.height)
