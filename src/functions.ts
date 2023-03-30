@@ -25,3 +25,6 @@ window.setFunction({
 
 // @ts-ignore
 window.ratio = () => 1 / (window.width / window.height)
+
+// @ts-ignore
+window.circle = (s = 0.5, k = 0.01) => shape(width / 2, s, k).scale(1, ratio())

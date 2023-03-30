@@ -43,28 +43,27 @@ export function createGl() {
 }
 
 export function shader() {
-	let program, rid
+	let program, rid, uniforms
 	const { gl, bufferInfo, canvas } = createGl()
 
 	const self = {
 		bufferInfo,
 		gl,
 		canvas,
-		update: (vertex, fragment) => {
+		update: (vertex, fragment, _uniforms) => {
+			uniforms = _uniforms
 			self.vert = vertex
 			self.frag = fragment
 
 			program = twgl.createProgramInfo(gl, [vertex, fragment], undefined, e => {
 				console.error('Shader error', e)
 			})
-
-			console.log(program)
 		},
 		reload: () => {
 			rid && rid()
 
 			if (program) {
-				rid = render(gl, program, bufferInfo)
+				rid = render(gl, program, bufferInfo, uniforms)
 			}
 		},
 		vert: VERTEX_SHADER,
@@ -74,7 +73,7 @@ export function shader() {
 	return self
 }
 
-export function render(gl, programInfo, bufferInfo) {
+export function render(gl, programInfo, bufferInfo, _uniforms) {
 	let rid
 
 	gl.useProgram(programInfo.program)
@@ -86,10 +85,16 @@ export function render(gl, programInfo, bufferInfo) {
 		//twgl.resizeCanvasToDisplaySize(gl.canvas)
 		gl.viewport(0, 0, window.width, window.height)
 
+		const uniformProps = Object.keys(_uniforms).reduce((prev, key) => {
+			prev[key] = typeof _uniforms[key] === 'function' ? _uniforms[key]() : _uniforms[key]
+			return prev
+		}, {})
+
 		const uniforms = {
 			time: time * 0.001,
 			resolution: [window.width, window.height],
 			mouse: [mousex, mousey, mousez],
+			...uniformProps,
 		}
 
 		twgl.setUniforms(programInfo, uniforms)
